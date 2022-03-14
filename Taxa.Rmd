@@ -7,7 +7,6 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
 library(readr)
 library(tidyverse)
 library(ggplot2)
@@ -23,10 +22,6 @@ new_taxa_data %>%
   group_by(Taxa) %>% 
   summarise(percent = 100 * n() / nrow(new_taxa_data))
 
- #there are four rows (288, 289, 290, 354) with empty Taxa data. Let's remove them.
-
-new_taxa_data <- new_taxa_data[ -c(288:290, 354)]
-
 #n lines 288:290 and 357 there is no value. I'll just add a random value. 
 
 new_taxa_data[288,3] <- "Other"
@@ -37,9 +32,6 @@ new_taxa_data[357,3] <- "Other"
 percent <- new_taxa_data %>% 
   group_by(Taxa) %>% 
   summarise(percent = 100 * n() / nrow(new_taxa_data))
-
-taxa_names <- as.vector(percent$Taxa)
-percentage <- as.vector(percent$percent)
 
 ggplot(percent, aes(x = "", y = percent, fill = Taxa)) +
   geom_bar(width = 1, stat = "identity") +
@@ -61,5 +53,6 @@ ggplot(new_taxa_data) +
         legend.text = element_text(size = 11), 
         panel.grid.major = element_line(size = 0.1, color = "black"), 
         panel.grid.minor = element_line(size = 0.05, color = "gray"))
+
 ```
 
