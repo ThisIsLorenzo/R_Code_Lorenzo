@@ -60,8 +60,11 @@ new_taxa_data$Country_first_author <- sample(c("Italy", "UK", "USA", "Germany", 
 ggplot(new_taxa_data) +
   geom_point(aes(Year, PFOS, color = Taxa))
 
+#Models. Relationship between PFOS and Years
 mod1 <- lm(PFOS ~ Year + Taxa, data = new_taxa_data)
+summary(mod1)
 mod2 <- lm(PFOS ~ Year * Taxa, data = new_taxa_data)
+summary(mod2)
 
 grid <- new_taxa_data %>% 
   data_grid(Year, Taxa) %>% 
