@@ -4,7 +4,7 @@ library(ggplot2)
 library(tidyr)
 library(dplyr)
 
-Taxa_data <- read_csv("Taxa_data.csv")
+Taxa_data <- read_csv("Data/Taxa_data.csv")
 
 new_taxa_data <- Taxa_data %>% 
   unite("Taxa", Bird:Other, na.rm = T, remove = F)
@@ -58,11 +58,27 @@ new_taxa_data$FOSA <- sample(FOSA, size = nrow(new_taxa_data), replace = T)
 new_taxa_data$Country_first_author <- sample(c("Italy", "UK", "USA", "Germany", "Norway", "Greece", "Japan", "Australia", "Alaska", "Faroe_islands", "Poland", "China", "Russia"), size = nrow(new_taxa_data), replace = T)
 
 ggplot(new_taxa_data) +
-  geom_point(aes(x = Year, y = count, color = Taxa))
+  geom_point(aes(Year, PFOS, color = Taxa))
 
+mod1 <- lm(PFOS ~ Year + Taxa, data = new_taxa_data)
+mod2 <- lm(PFOS ~ Year * Taxa, data = new_taxa_data)
 
+grid <- new_taxa_data %>% 
+  data_grid(Year, Taxa) %>% 
+  gather_predictions(mod1, mod2)
 
+ggplot(new_taxa_data, aes(Year, PFOS, color = Taxa)) +
+  geom_point() +
+  geom_line(data = grid, aes(y = pred)) +
+  facet_wrap(~ model) +
+  ylim(c(0, 15))
 
+res <- new_taxa_data %>% 
+  gather_residuals(mod1, mod2)
+ggplot(res, aes(Year, resid, color = Taxa)) +
+  geom_point() +
+  facet_grid(model ~ Taxa) +
+  theme(legend.position = "none")
 
 
 
