@@ -47,12 +47,17 @@ ggplot(new_taxa_data) +
         panel.grid.minor = element_line(size = 0.05, color = "gray"))
 
 #create new variables (PFAS compounds) filled with random numbers (random concentrations)
-PFOA <- seq(from = 0, to = 10, by = .01) 
-PFOS <- seq(from = 0, to = 15, by = .01)
-FOSA <- seq(from = 0, to = 5, by = .01)
-new_taxa_data$PFOA <- sample(PFOA, size = nrow(new_taxa_data), replace = T)
-new_taxa_data$PFOS <- sample(PFOS, size = nrow(new_taxa_data), replace = T)
-new_taxa_data$FOSA <- sample(FOSA, size = nrow(new_taxa_data), replace = T)
+PFOA <- abs(rnorm(403, mean = 5, sd = 3)) 
+PFOS <- abs(rnorm(403, mean = 2, sd = .3))
+FOSA <- abs(rnorm(403, mean = 1.5, sd = .2))
+
+new_taxa_data$PFOA <- PFOA
+new_taxa_data$PFOS <- PFOS
+new_taxa_data$FOSA <- FOSA
+
+hist(PFOA)
+hist(PFOS)
+hist(FOSA)
 
 #create a new variable (first author's country) filled with randomly chosen categorical data
 new_taxa_data$Country_first_author <- sample(c("Italy", "UK", "USA", "Germany", "Norway", "Greece", "Japan", "Australia", "Alaska", "Faroe_islands", "Poland", "China", "Russia"), size = nrow(new_taxa_data), replace = T)
@@ -76,7 +81,7 @@ ggplot(new_taxa_data, aes(Year, PFOS, color = Taxa)) +
   geom_point() +
   geom_line(data = grid, aes(y = pred)) +
   facet_wrap(~ model) +
-  ylim(c(0, 15))
+  ylim(c(1, 3))
 
 res <- new_taxa_data %>% 
   gather_residuals(mod1, mod2)
