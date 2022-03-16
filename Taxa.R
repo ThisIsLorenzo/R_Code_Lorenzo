@@ -66,6 +66,8 @@ summary(mod1)
 mod2 <- lm(PFOS ~ Year * Taxa, data = new_taxa_data)
 summary(mod2)
 
+library(modelr)
+
 grid <- new_taxa_data %>% 
   data_grid(Year, Taxa) %>% 
   gather_predictions(mod1, mod2)
@@ -78,6 +80,7 @@ ggplot(new_taxa_data, aes(Year, PFOS, color = Taxa)) +
 
 res <- new_taxa_data %>% 
   gather_residuals(mod1, mod2)
+
 ggplot(res, aes(Year, resid, color = Taxa)) +
   geom_point() +
   facet_grid(model ~ Taxa) +
