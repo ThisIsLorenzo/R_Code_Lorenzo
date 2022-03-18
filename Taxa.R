@@ -46,29 +46,29 @@ ggplot(new_taxa_data) +
         panel.grid.major = element_line(size = 0.1, color = "black"), 
         panel.grid.minor = element_line(size = 0.05, color = "gray"))
 
-#create new variables (PFAS compounds) filled with random numbers (random concentrations)
-PFOA <- abs(rnorm(403, mean = 5, sd = 3)) 
+#create new variables (PFAS compounds)
+PFOA <- abs(rnorm(403, mean = 7, sd = 10)) 
 PFOS <- abs(rnorm(403, mean = 2, sd = .3))
-FOSA <- abs(rnorm(403, mean = 1.5, sd = .2))
+FOSA <- abs(rnorm(403, mean = 1.5, sd = 4))
 
 new_taxa_data$PFOA <- PFOA
 new_taxa_data$PFOS <- PFOS
 new_taxa_data$FOSA <- FOSA
 
-hist(PFOA)
-hist(PFOS)
-hist(FOSA)
+hist(PFOA, breaks = 100)
+hist(PFOS, breaks = 100)
+hist(FOSA, breaks = 100)
 
-#create a new variable (first author's country) filled with randomly chosen categorical data
+#create a new variable (first author's country) filled with randomly chosen categorical data. THIS IS A FIGMENT OF THE IMAGINATION!!
 new_taxa_data$Country_first_author <- sample(c("Italy", "UK", "USA", "Germany", "Norway", "Greece", "Japan", "Australia", "Alaska", "Faroe_islands", "Poland", "China", "Russia"), size = nrow(new_taxa_data), replace = T)
 
 ggplot(new_taxa_data) +
-  geom_point(aes(Year, PFOS, color = Taxa))
+  geom_point(aes(Year, PFOA, color = Taxa))
 
 #Models. Relationship between PFOS and Years
-mod1 <- lm(PFOS ~ Year + Taxa, data = new_taxa_data)
+mod1 <- lm(PFOA ~ Year + Taxa, data = new_taxa_data)
 summary(mod1)
-mod2 <- lm(PFOS ~ Year * Taxa, data = new_taxa_data)
+mod2 <- lm(PFOA ~ Year * Taxa, data = new_taxa_data)
 summary(mod2)
 
 library(modelr)
@@ -77,7 +77,7 @@ grid <- new_taxa_data %>%
   data_grid(Year, Taxa) %>% 
   gather_predictions(mod1, mod2)
 
-ggplot(new_taxa_data, aes(Year, PFOS, color = Taxa)) +
+ggplot(new_taxa_data, aes(Year, PFOA, color = Taxa)) +
   geom_point() +
   geom_line(data = grid, aes(y = pred)) +
   facet_wrap(~ model) +
@@ -91,7 +91,17 @@ ggplot(res, aes(Year, resid, color = Taxa)) +
   facet_grid(model ~ Taxa) +
   theme(legend.position = "none")
 
+ggplot(res, aes(Year, resid, color = Taxa)) +
+  geom_point() +
+  facet_grid(model ~ Taxa) +
+  theme(legend.position = "none")
 
+# how many papers are on birds?
 
+n_taxa <- new_taxa_data %>% 
+  group_by(Taxa) %>% 
+  tally()
 
-
+ggplot(new_taxa_data) +
+  geom_bar(aes(x = factor(Taxa)), fill = "coral", las=2) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
