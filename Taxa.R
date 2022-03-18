@@ -102,6 +102,31 @@ n_taxa <- new_taxa_data %>%
   group_by(Taxa) %>% 
   tally()
 
+n_taxa
+
 ggplot(new_taxa_data) +
-  geom_bar(aes(x = factor(Taxa)), fill = "coral", las=2) +
-  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+  geom_bar(aes(x = factor(Taxa)), fill = "coral") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  scale_y_continuous(name = "n of papers") +
+  scale_x_discrete(name = "taxa")
+
+# how many papers are on eggs?
+
+development_stage <- read_csv("Data/development_stage.csv")
+
+development_stage$Developmental_stage = tolower(development_stage$Developmental_stage)
+
+ds <- development_stage %>% 
+  group_by(Developmental_stage) %>% 
+  tally()
+
+ds
+
+ggplot(development_stage) +
+  geom_bar(aes(x = Developmental_stage), fill = "coral") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  scale_y_continuous(name = "n of papers") +
+  scale_x_discrete(name = "development stage")
+
+
+
