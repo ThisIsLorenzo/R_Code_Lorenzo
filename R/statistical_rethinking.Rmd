@@ -1,0 +1,35 @@
+---
+title: "statistical_rethinking"
+author: "LR"
+date: '2022-07-20'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Sampling the prior distribution
+```{r}
+n_samples <- 10
+alpha <- rnorm(n_samples,0,1)
+beta <- rnorm(n_samples,0,1)
+plot(NULL,xlim=c(-2,2), ylim=c(-2,2), xlab='x', ylab='y')
+for(i in 1:n_samples)
+  abline(alpha[i],beta[i],lwd=4,col=2)
+```
+# Sampled regression lines
+```{r}
+n <- 10
+alpha <- rnorm(n,60,10)
+beta <- rnorm(n,0,10)
+Hbar <- 150
+Hseq <- seq(from=130, to=170,len=30)
+plot(NULL,xlim=c(130,170),ylim=c(10,100), xlab='height (cm)', ylab='weight (kg)')
+for(i in 1:n)
+  lines (Hseq, alpha[i] + beta[i]*(Hseq-Hbar), lwd=3, col=2)
+```
+
+
+
+
