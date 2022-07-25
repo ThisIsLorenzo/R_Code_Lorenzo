@@ -1,0 +1,34 @@
+---
+title: "Orchard Plot"
+author: "LR"
+date: "2022-07-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, tidy = TRUE)
+options(digits=2)
+```
+
+We need to calculate the effect sizes, in this case d
+```{r}
+library(metafor)
+english <- escalc(measure = "SMD", n1i = NStartControl, sd1i = SD_C, m1i = MeanC, n2i = NStartExpt, sd2i = SD_E, m2i = MeanE, 
+                  var.names=c("SMD","vSMD"),
+                  data = english)
+english_MA <- rma.mv(yi = SMD, V = vSMD, random = list( ~ 1 | StudyNo, ~ 1 | EffectID), data = english)
+summary(english_MA)
+
+```
+We have fit a meta-analytic model and thus the only estimate we see is the overall effect size on the effects of caloric restriction on mean death across all studies examined. Now that we have fit our meta-analytic model we can get the confidence intervals and prediction intervals with a few functions in the `orchaRd` package. If one is interested in getting the table of results we can use the `mod_results` function. This will allow users to make nice tables of the results if needed. We can do that as follows:
+```{r echo = TRUE, eval = TRUE, warning=FALSE, message=FALSE, class.source='klippy'}
+library(orchaRd)
+model_results <- mod_results(english_MA, mod = "1", at = NULL, data = english, group = "StudyNo")
+model_results
+```
+If we instead want to create an orchard plot and visualise the results we can do so quite simply as:
+```{r Figure1, echo = TRUE, eval = TRUE, warning=FALSE, message=FALSE, class.source='klippy', fig.width = 6, fig.height = 4, fig.cap = "Orchard plot of the impact caloric restriction using standardised mean difference"}
+orchaRd::orchard_plot(english_MA, mod="1", data = english, group = "StudyNo", xlab = "Standardised mean difference", 
+  transfm = "none")
+```
+
