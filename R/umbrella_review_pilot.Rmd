@@ -1,0 +1,51 @@
+---
+title: "code_pilot"
+author: "LR"
+date: "2022-07-25"
+output: html_document
+---
+
+# Source: https://github.com/mlagisz/UmbrellaReview_PFAS_pilot/blob/main/R/Code_pilot.Rmd
+
+```{r setup, include=TRUE}
+library(tidyverse)
+library(here)
+library(stringr)
+library(knitr)
+library(formatR)
+library(forcats)
+library(ggplot2)
+library(hrbrthemes) #for ggplot2
+library(patchwork) #for ggplot2
+library(bibliometrix)
+library(igraph)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+Download data sets from the GitHub repository
+_It actually does not work I do not know why_
+```{r, include=FALSE}
+#download.file("https://github.com/mlagisz/UmbrellaReview_PFAS_pilot/blob/main/data/ReviewMap_PFAS_main_pilot.csv", "Data/mdata.csv")
+#download.file("https://github.com/mlagisz/UmbrellaReview_PFAS_pilot/blob/main/data/ReviewMap_PFAS_types_pilot.csv", "Data/ptdata.csv")
+#download.file("https://github.com/mlagisz/UmbrellaReview_PFAS_pilot/blob/main/data/ReviewMap_PFAS_Species_pilot.csv", "Data/spdata.csv")
+#download.file("https://github.com/mlagisz/UmbrellaReview_PFAS_pilot/blob/main/data/ReviewMap_PFAS_Quality_pilot.csv", "Data/qdata.csv")
+#download.file("https://github.com/mlagisz/UmbrellaReview_PFAS_pilot/blob/main/data/PFAS_info.csv", "Data/pidata.csv")
+```
+
+Load data from .csv files
+```{r, include=FALSE}
+mdata <- read_csv(here("Data","ReviewMap_PFAS_main_pilot.csv"), skip = 0)
+dim(mdata) #[1]  8 33
+spdata <- read_csv(here("Data","ReviewMap_PFAS_species_pilot.csv"), skip = 0) 
+dim(spdata) #[1] 2 3
+# change to long format (one species per row - one or multple rows per study)
+spdata <- spdata %>% separate_rows(Species_scientific_name, sep='; ')
+dim(spdata) #[1] 29  3
+ptdata <- read_csv(here("Data","ReviewMap_PFAS_types_pilot.csv"), skip = 0) 
+dim(ptdata) #[1] 8 3
+ptdata %>% separate_rows(PFAS_type, sep=', ') -> ptdata
+dim(ptdata)#[1] 70  3
+pidata <- read_csv(here("Data","PFAS_info.csv"), skip = 0) 
+qdata <- read_csv(here("Data", "ReviewMap_PFAS_quality_pilot.csv"), skip = 0)
+dim(qdata) #[1]  8 33
+```
+
