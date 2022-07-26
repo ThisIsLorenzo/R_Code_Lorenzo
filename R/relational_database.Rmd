@@ -1,0 +1,348 @@
+---
+title: "relational database"
+author: "LR"
+date: '2022-07-22'
+output: html_document
+---
+
+# *Introduction to relational data models*
+
+Packages:
+- nycflights13
+- RSQLite
+
+Computer scientists are familiar with multiple, linked tables. But, because many R users tend to have backgrounds in other disciplines, we present six important terms in relational data modeling to help you to jump-start working with {dm}. These terms are:
+
+- Data Frames and Tables
+- Data Model
+- Primary Keys
+- Foreign Keys
+- Referential Integrity
+- Normalization
+- Relational Databases
+
+## Data Frames and Tables
+
+A data frame is a fundamental data structure in R. Columns represent variables, rows represent observations. In more technical terms, a data frame is a list of variables of identical length and unique row names. If you imagine it visually, the result is a typical table structure. That is why working with data from spreadsheets is so convenient and the users of the popular {dplyr} package for data wrangling mainly rely on data frames.
+
+The downside is that data frames and flat file systems like spreadsheets can result in bloated tables because they hold many repetitive values. In the worst case, a data frame can contain multiple columns with only a single value different in each row.
+
+This calls for better data organization by utilizing the resemblance between data frames and database tables, which also consist of columns and rows. The elements are just named differently: Columns become **Attributes (or Fields)** and Rows become **Tuple (or Records)**.
+
+Additionally, number of rows and columns for a data frame are, respectively, analogous to the cardinality and degree of the table.
+
+Relational databases, unlike data frames, do not keep all data in one large table but instead split it into multiple smaller tables. That separation into sub-tables has several **advantages**:
+
+- all information is stored only once, avoiding redundancy and conserving memory
+- all information needs to be updated only once and in one place, improving consistency and avoiding errors that may result from updating (or forgetting to update) the same value in multiple locations
+- all information is organized by topic and segmented into smaller tables that are easier to handle
+- It is for these reasons that separation of data helps with data quality, and they explain the popularity of relational databases in production-level data management.
+
+The **downside** of this approach is that it is harder to merge together information from different data sources and to identify which entities refer to the same object, a common task when modeling or plotting data.
+
+Thus, to take full advantage of the relational database approach, an **associated data model** is needed to overcome the challenges that arise when working with multiple tables.
+
+Let’s illustrate this challenge with the data from the nycflights13 dataset that contains detailed information about the 336,776 flights that departed from New York City in 2013. The information is stored in five tables.
+
+Details like the full name of an airport are not available immediately; these can only be obtained by joining or merging the constituent tables, which can result in long and inflated pipe chains full of left_join(), anti_join() and other forms of data merging.
+
+In classical {dplyr} notation, you will need three left_join() calls to merge the flights table gradually to airlines, planes, airports, and weather tables to create one wide data frame.
+
+```{r}
+library(tidyverse)
+library(dm)
+library(nycflights13)
+
+nycflights13_df <- 
+  flights %>%
+  left_join(airlines, by = "carrier") %>%
+  left_join(planes, by = "tailnum") %>%
+  left_join(airports, by = c("origin" = "faa")) %>%
+  left_join(weather, by = c("origin", "time_hour"))
+
+nycflights13_df
+```
+
+**{dm}** offers a more elegant and shorter way to combine tables while augmenting {dplyr}/{dbplyr} workflows.
+
+It is possible to have the best of both worlds: manage your data with {dm} as linked tables, and, when necessary, flatten multiple tables into a single data frame for analysis with {dplyr}.
+
+The next step is to create a data model based on multiple tables.
+
+## *Data Model*
+
+A data model shows the structure between multiple tables that are linked together.
+
+The nycflights13 relations can be transferred into the following graphical representation:
+
+```{r}
+dm <- dm_nycflights13(cycle = TRUE)
+
+dm %>%
+  dm_draw()
+```
+
+The flights table is linked to four other tables: airlines, planes, weather, and airports. By using directed arrows, the visualization shows explicitly the connection between different columns (they are called attributes in the relational data sphere).
+
+For example: The column carrier in flights can be joined with the column carrier from the airlines table.
+
+The links between the tables are established through primary keys and foreign keys.
+
+As an aside, we can also now see how avoiding redundant data by building data models with multiple tables can save memory compared to storing data in single a data frame:
+```{r}
+object.size(dm) # 469680 bytes
+object.size(nycflights13_df) # 108020824 bytes
+```
+
+## *Primary Keys*
+
+In a relational data model, each table should have one or several columns that uniquely identify a row. These columns define the primary key (abbreviated with “pk”). If the key consists of a single column, it is called a simple key. A key consisting of more than one column is called a compound key.
+
+Example: In the airlines table of nycflights13 the column carrier is the primary key, a simple key. The weather table has the combination of origin and time_hour as primary key, a compound key.
+
+You can get all primary keys in a dm by calling dm_get_all_pks():
+```{r}
+dm %>%
+  dm_get_all_pks()
+```
+dm_enum_pk_candidates() checks suitability of each column to serve as a simple primary key:
+```{r}
+dm %>%
+  dm_enum_pk_candidates(airports)
+```
+
+## *Foreign Keys*
+
+The **counterpart of a primary key** in one table is the foreign key in another table. In order to join two tables, the primary key of the first table needs to be referenced from the second table. This column or these columns are called the foreign key (abbreviated with “fk”).
+
+For example, if you want to link the airlines table to the flights table, the primary key in airlines needs to match the foreign key in flights. This condition is satisfied because the column carrier is present as a primary key in the airlines table as well as a foreign key in the flights table. In the case of compound keys, the origin and time_hour columns (which form the primary key of the weather table) are also present in the flights table.
+
+You can find foreign key candidates for simple keys with the function dm_enum_fk_candidates(); they are marked with TRUE in the candidate column.
+```{r}
+dm %>%
+  dm_enum_fk_candidates(flights, airlines)
+```
+Additionally, you can also extract a summary of all foreign key relations present in a dm object using dm_get_all_fks():
+```{r}
+dm %>% 
+  dm_get_all_fks()
+```
+
+## *Referential Ingtegrity*
+
+**A data set has referential integrity if all relations between tables are valid**. That is, every foreign key holds a primary key that is present in the parent table. If a foreign key contains a reference where the corresponding row in the parent table is not available, that row is an orphan row and the database no longer has referential integrity.
+
+{dm} allows checking referential integrity with the dm_examine_constraints() function. The following conditions are checked:
+
+- All primary key values must be unique and not missing (i.e., NAs are not allowed).
+- Each foreign key value must have a corresponding primary key value.
+In the example data model, for a substantial share of the flights, detailed information for the corresponding airplane is not available:
+```{r}
+dm %>%
+  dm_examine_constraints()
+```
+Establishing referential integrity is important for providing clean data for analysis or downstream users. See vignette("howto-dm-rows") for more information on adding, deleting, or updating individual rows, and vignette("tech-dm-zoom") for operations on the data in a data model.
+
+## *Normalization*
+
+Normalization is a technical term that describes the central design principle of a relational data model: splitting data into multiple tables.
+
+A normalized data schema consists of several relations (tables) that are linked with attributes (columns). The relations can be joined together by means of primary and foreign keys. The main goal of normalization is to keep data organization as clean and simple as possible by avoiding redundant data entries.
+
+For example, if you want to change the name of one airport in the nycflights13 dataset, you will only need to update a single data value. This principle is sometimes called **the single point of truth**.
+
+```{r}
+#  Update in one single location...
+airlines[airlines$carrier == "UA", "name"] <- "United broke my guitar"
+
+airlines %>%
+  filter(carrier == "UA")
+# ...propagates to all related records
+flights %>%
+  left_join(airlines) %>%
+  select(flight, name)
+```
+Another way to demonstrate normalization is splitting a table into two parts.
+
+Let’s look at the planes table, which consists of 3322 individual tail numbers and corresponding information for the specific airplane, like the year it was manufactured or the average cruising speed.
+
+The function decompose_table() extracts two new tables and creates a new key model_id, that links both tables.
+
+This results in a parent_table and a child_table that differ massively in the number of rows:
+
+```{r}
+planes %>%
+  decompose_table(model_id, model, manufacturer, type, engines, seats, speed)
+```
+
+While child_table contains 3322 unique tailnum rows and therefore consists of 3322 rows, just like the original planes table, the parent_table shrunk to just 147 rows, enough to store all relevant combinations and avoid storing redundant information.
+
+## Relational Databases
+
+{dm} is built upon relational data models but it is not a database itself. Databases are systems for data management and many of them are constructed as relational databases (e.g., SQLite, MySQL, MSSQL, Postgres, etc.). As you can guess from the names of the databases, SQL, short for Structured Querying Language, plays an important role: it was invented for the purpose of querying relational databases.
+
+**In production, the data is stored in a relational database and {dm} is used to work with the data.**
+
+Therefore, {dm} can copy data from and to databases, and works transparently with both in-memory data and with relational database systems.
+
+For example, let’s create a local SQLite database and copy the dm object to it:
+
+```{r}
+con_sqlite <- DBI::dbConnect(RSQLite::SQLite())
+con_sqlite
+DBI::dbListTables(con_sqlite)
+copy_dm_to(con_sqlite, dm)
+DBI::dbListTables(con_sqlite)
+```
+
+In the opposite direction, dm can also be populated with data from a database. Unfortunately, keys currently can be learned only for Microsoft SQL Server and Postgres, but not for SQLite. Therefore, the dm contains the tables but not the keys:
+
+```{r}
+dm_from_con(con_sqlite)
+```
+Remember to terminate the database connection:
+```{r}
+DBI::dbDisconnect(con_sqlite)
+```
+
+
+----------------------------------------
+----------------------------------------
+----------------------------------------
+
+
+# *dm object INTRODUCTION*
+
+Source: https://cynkra.github.io/dm/index.html
+
+dm helps you organizing your multiple database tables. It bridges the gap in the data pipeline between individual data frames and relational databases. dm makes it easy to bring an existing relational data model into your R session.dm also offers:
+- visualization to help you understand relationships between entities represented by the tables
+- simpler joins that “know” how tables are related, including a “flatten” operation that automatically follows keys and performs column name disambiguation
+- consistency and constraint checks to help you understand (and fix) the limitations of your data
+
+**Usage**
+
+Upload packages
+```{r, include=FALSE}
+library(dplyr)
+library(dm)
+library(DiagrammeR)
+```
+
+Create a dm object
+```{r}
+dm <- dm_nycflights13()
+dm
+```
+
+dm is a named list of tables
+```{r}
+names(dm)
+nrow(dm$airports) # [1] 863
+dm$flights %>% 
+  count(origin)
+```
+
+Visualize relationships
+```{r}
+dm %>% 
+  dm_draw()
+```
+
+Simple joins
+```{r}
+dm %>% 
+  dm_flatten_to_tbl(flights)
+```
+
+Check consistency
+```{r}
+dm %>% 
+  dm_examine_constraints()
+```
+
+# Getting started with dm
+
+Source: https://cynkra.github.io/dm/articles/dm.html
+
+*Creating a dm object* - dm objects can be created from individual tables or loaded directly from a relational data model on an RDBMS (relational database management system).
+
+For this demonstration, we’re going to work with a model hosted on a public server. The first thing we need is a connection to the RDBMS hosting the data.
+```{r}
+library(RMariaDB)
+library(dm)
+fin_db <- dbConnect(
+  MariaDB(),
+  username = "guest",
+  password = "relational",
+  dbname = "Financial_ijs",
+  host = "relational.fit.cvut.cz"
+)
+
+fin_db <- dm:::financial_db_con()
+# We create a dm object from an RDBMS using dm_from_con(), passing in the connection object we just created as the first argument.
+fin_dm <- dm_from_con(fin_db)
+fin_dm
+```
+The dm object interrogates the RDBMS for table and column information, and primary and foreign keys. Currently, primary and foreign keys are only available from SQL Server, Postgres and MariaDB.
+
+*Selecting tables* - The dm object can be accessed like a named list of tables:
+```{r}
+names(fin_dm)
+fin_dm$loans
+dplyr::count(fin_dm$trans)
+```
+Additionally, most dm functions are pipe-friendly and support tidy evaluation. We can use [ or the dm_select_tbl() verb to derive a smaller dm with the loans, accounts, districts and trans tables:
+```{r}
+fin_dm_small <- fin_dm[c("loans", "accounts", "districts", "trans")]
+fin_dm_small <-
+  fin_dm %>%
+  dm_select_tbl(loans, accounts, districts, trans)
+```
+
+*Linking tables by adding keys* - In many cases, dm_from_con() already returns a dm with all keys set. If not, dm allows us to define primary and foreign keys ourselves. For this, we use learn_keys = FALSE to obtain a dm object with only the tables.
+
+
+
+
+
+
+
+# Manipulating individual tables
+
+Source: vignettes/tech-dm-keyed.Rmd
+
+Objective: This vignette deals with situations where you want to transform tables of your dm object and then update an existing table or add a new table to the dm object.
+
+Imagine you want to have a column in flights, specifying if a flight left before noon or after.
+```{r}
+flights_dm <- dm_nycflights13(cycle = TRUE)
+flights_dm
+```
+
+```{r}
+flights_keyed <-
+  flights_dm %>% 
+  dm_get_tables(keyed=TRUE)
+flights_keyed$flights
+flights_tbl_mutate <- 
+  flights_keyed$flights %>% 
+  mutate(am_pm_dep = if_else(dep_time < 1200, "am", "pm"), .after = dep_time)
+flights_tbl_mutate
+```
+To update the original dm with a new flights table we use dm().
+```{r}
+updated_flights_dm <- 
+  dm(
+    flights = flights_tbl_mutate,
+    !!!flights_keyed[c("airlines", "airports", "planes", "weather")]
+  )
+updated_flights_dm
+```
+The schematic view of the data model remains unchanged
+```{r}
+dm_draw(updated_flights_dm)
+```
+
+
+
