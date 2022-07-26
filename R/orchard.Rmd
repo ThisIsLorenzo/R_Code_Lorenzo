@@ -5,6 +5,8 @@ date: "2022-07-25"
 output: html_document
 ---
 
+Source: https://github.com/daniel1noble/orchaRd/blob/main/orchaRd_vignette.Rmd
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE, tidy = TRUE)
 options(digits=2)
